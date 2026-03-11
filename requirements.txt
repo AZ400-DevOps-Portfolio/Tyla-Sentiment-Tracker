@@ -1,0 +1,7 @@
+google-api-python-client==2.118.0
+vaderSentiment==3.3.2
+textblob==0.18.0
+pandas==2.2.1
+numpy==1.26.4
+nltk==3.8.1
+python-dateutil==2.9.0

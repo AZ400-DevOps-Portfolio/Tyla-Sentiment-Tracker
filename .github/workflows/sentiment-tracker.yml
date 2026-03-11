@@ -1,0 +1,74 @@
+name: Tyla Sentiment Tracker
+
+on:
+  schedule:
+    - cron: '0 6 1,15 * *'
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for manual run (e.g. Tyla dropped new music)'
+        required: false
+        default: 'Manual collection run'
+
+jobs:
+
+  collect-sentiment:
+    name: Collect & Analyse Sentiment
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+
+    - name: Run sentiment collection
+      env:
+        YOUTUBE_API_KEY: ${{ secrets.YOUTUBE_API_KEY }}
+      run: |
+        echo "Starting Tyla sentiment collection..."
+        python scripts/collect_and_analyse.py
+        echo "Collection complete"
+
+    - name: Upload CSV as artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: tyla-sentiment-data-${{ github.run_number }}
+        path: data/sentiment_history.csv
+        retention-days: 90
+      continue-on-error: true
+
+    - name: Commit updated CSV to repo
+      run: |
+        git config --local user.email "action@github.com"
+        git config --local user.name "Tyla Sentiment Bot"
+        git add data/sentiment_history.csv
+        git diff --staged --quiet || git commit -m "Sentiment update — $(date +'%Y-%m-%d')"
+        git push
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  report:
+    name: Collection Summary
+    runs-on: ubuntu-latest
+    needs: collect-sentiment
+
+    steps:
+    - name: Print collection summary
+      run: |
+        echo "========================================"
+        echo "  Tyla Sentiment Tracker"
+        echo "========================================"
+        echo "  Schedule : 1st and 15th of every month"
+        echo "  Analysis : VADER + TextBlob dual model"
+        echo "  Storage  : data/sentiment_history.csv"
+        echo "  Artifact : Downloadable for 90 days"
+        echo "========================================"
